@@ -41,6 +41,7 @@ struct _EomImageSaveInfoClass {
 };
 
 #define EOM_FILE_FORMAT_JPEG   "jpeg"
+#define EOM_FILE_FORMAT_WEBP   "webp"
 
 GType             eom_image_save_info_get_type         (void) G_GNUC_CONST;
 

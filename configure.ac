@@ -39,7 +39,13 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources])
 AC_PATH_PROG([GLIB_GENMARSHAL], [glib-genmarshal])
+if test -z "$GLIB_GENMARSHAL"; then
+  AC_MSG_ERROR([glib-genmarshal not found, please install glib2-devel])
+fi
 AC_PATH_PROG([GLIB_MKENUMS],[glib-mkenums])
+if test -z "$GLIB_MKENUMS"; then
+  AC_MSG_ERROR([glib-mkenums not found, please install glib2-devel])
+fi
 
 GTK_DOC_CHECK(1.9)
 
@@ -154,6 +160,24 @@ if test "x$have_exif" = "xyes"; then
 fi
 
 AM_CONDITIONAL([HAVE_EXIF], [test "x$have_exif" = "xyes"])
+
+# *********************
+# WEBP (optional)
+# *********************
+
+LIBWEBP_REQUIRED=0.5.0
+
+AC_ARG_WITH([libwebp], AS_HELP_STRING([--without-libwebp], [disable WEBP support]))
+have_webp=no
+if test x$with_libwebp != xno; then
+	PKG_CHECK_MODULES(WEBP, libwebp >= $LIBWEBP_REQUIRED libwebpdemux libwebpmux, have_webp=yes, have_webp=no)
+fi
+if test "x$have_webp" = "xyes"; then
+  AC_DEFINE(HAVE_WEBP, 1, [WEBP Support.])
+  EOM_MODULES="$EOM_MODULES libwebp >= $LIBWEBP_REQUIRED libwebpdemux libwebpmux"
+fi
+
+AM_CONDITIONAL([HAVE_WEBP], [test "x$have_webp" = "xyes"])
 
 # *********************
 # Little CMS (optional)
@@ -426,6 +450,7 @@ Configure summary:
 	EXIF support ...............:  ${have_exif}
 	XMP support ................:  ${have_exempi}
 	JPEG support ...............:  ${have_jpeg}
+	WebP support ...............:  ${have_webp}
 	RSVG support ...............:  ${have_rsvg}
 	Colour management support ..:  ${have_lcms}
 	GObject Introspection.......:  ${have_introspection}

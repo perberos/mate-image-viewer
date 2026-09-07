@@ -85,6 +85,14 @@ all_deps += [jpeg]
 
 cms = dependency('lcms2', required : get_option('cms'))
 all_deps += [cms]
+
+webp = dependency('libwebp', version : '>= 0.5.0', required : get_option('webp'))
+webpdemux = dependency('libwebpdemux', required : get_option('webp'))
+webpmux = dependency('libwebpmux', required : get_option('webp'))
+if webp.found() and webpdemux.found() and webpmux.found()
+  all_deps += [webp, webpdemux, webpmux]
+endif
+
 gdk_target_has_x11 = gdk.get_variable('targets').split(' ').contains('x11')
 if cms.found() or gdk_target_has_x11
   x11 = dependency('x11')
@@ -170,6 +178,10 @@ endif
 if cms.found()
   conf.set('HAVE_LCMS', 1)
 endif
+# WebP support
+if webp.found() and webpdemux.found() and webpmux.found()
+  conf.set('HAVE_WEBP', 1)
+endif
 # RSVG Support
 if rsvg.found()
   conf.set('HAVE_RSVG', 1)
@@ -186,6 +198,7 @@ summary({
   'EXIF support': exif.found(),
   'XMP support': xmp.found(),
   'JPEG support': jpeg.found(),
+  'WebP support': webp.found() and webpdemux.found() and webpmux.found(),
   'RSVG support': rsvg.found(),
   'Colour management support': cms.found(),
   'GObject Introspection': gobject_introspection.found(),

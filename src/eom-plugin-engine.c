@@ -34,7 +34,9 @@
 #include <glib/gi18n.h>
 #include <glib.h>
 #include <gio/gio.h>
+#if !GLIB_CHECK_VERSION(2, 80, 0)
 #include <girepository.h>
+#endif
 
 #define USER_EOM_PLUGINS_LOCATION "plugins/"
 
@@ -87,6 +89,33 @@ eom_plugin_engine_new (void)
 	private_path = g_build_filename (LIBDIR, "girepository-1.0", NULL);
 
 	/* This should be moved to libpeas */
+#if GLIB_CHECK_VERSION(2, 80, 0)
+	{
+		GIRepository *repo = gi_repository_dup_default ();
+		if (!gi_repository_require (repo, "Peas", "1.0", 0, &error))
+		{
+			g_warning ("Error loading Peas typelib: %s\n",
+			           error->message);
+			g_clear_error (&error);
+		}
+
+		if (!gi_repository_require (repo, "PeasGtk", "1.0", 0, &error))
+		{
+			g_warning ("Error loading PeasGtk typelib: %s\n",
+			           error->message);
+			g_clear_error (&error);
+		}
+
+		if (!gi_repository_require_private (repo, private_path,
+		                                    "Eom", "1.0", 0, &error))
+		{
+			g_warning ("Error loading Eom typelib: %s\n",
+			           error->message);
+			g_clear_error (&error);
+		}
+		g_object_unref (repo);
+	}
+#else
 	if (g_irepository_require (g_irepository_get_default (),
 	                           "Peas", "1.0", 0, &error) == NULL)
 	{
@@ -111,6 +140,7 @@ eom_plugin_engine_new (void)
 		           error->message);
 		g_clear_error (&error);
 	}
+#endif
 
 	g_free (private_path);
 

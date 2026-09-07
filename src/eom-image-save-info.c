@@ -74,6 +74,19 @@ get_save_file_type_by_file (GFile *file)
 	if (format != NULL) {
 		type = gdk_pixbuf_format_get_name (format);
 	}
+#ifdef HAVE_WEBP
+	if (type == NULL) {
+		char *basename = g_file_get_basename (file);
+		if (basename) {
+			char *lower = g_ascii_strdown (basename, -1);
+			if (g_str_has_suffix (lower, ".webp")) {
+				type = g_strdup ("webp");
+			}
+			g_free (lower);
+			g_free (basename);
+		}
+	}
+#endif
 
 	return type;
 }

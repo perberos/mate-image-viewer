@@ -23,6 +23,7 @@ NOINST_H_FILES =			\
 	eom-preferences-dialog.h	\
 	eom-config-keys.h		\
 	eom-image-jpeg.h		\
+	eom-image-webp.h		\
 	eom-image-private.h		\
 	eom-metadata-sidebar.h		\
 	eom-uri-converter.h		\
@@ -80,6 +81,7 @@ libeom_c_files =			\
 	eom-transform.c			\
 	eom-image.c			\
 	eom-image-jpeg.c		\
+	eom-image-webp.c		\
 	eom-image-save-info.c		\
 	eom-scroll-view.c		\
 	eom-thumb-view.c		\
@@ -146,8 +148,18 @@ libeom_la_CFLAGS =						\
 	$(EOM_CFLAGS)						\
 	$(WARN_CFLAGS)
 
+if HAVE_WEBP
+libeom_la_CFLAGS += \
+	$(WEBP_CFLAGS)
+endif
+
 libeom_la_LIBADD = \
 	$(EOM_LIBS)
+
+if HAVE_WEBP
+libeom_la_LIBADD += \
+	$(WEBP_LIBS)
+endif
 
 if HAVE_LCMS
 libeom_la_CFLAGS += 	\
@@ -175,6 +187,11 @@ eom_LDADD = 				\
 	$(toolbar_LIB)			\
 	$(jpeg_LIB)			\
 	$(INTROSPECTION_LIBS)
+
+if HAVE_WEBP
+eom_LDADD += \
+	$(WEBP_LIBS)
+endif
 
 BUILT_SOURCES = 			\
 	eom-enum-types.c		\

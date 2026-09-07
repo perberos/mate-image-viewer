@@ -33,6 +33,9 @@
 #ifdef HAVE_JPEG
 #include "eom-image-jpeg.h"
 #endif
+#ifdef HAVE_WEBP
+#include "eom-image-webp.h"
+#endif
 
 #include "eom-marshal.h"
 #include "eom-pixbuf-util.h"
@@ -892,6 +895,7 @@ eom_image_real_load (EomImage *img,
 	gboolean first_run = TRUE;
 	gboolean set_metadata = TRUE;
         gboolean use_rsvg = FALSE;
+	gboolean use_webp = FALSE;
 	gboolean read_image_data = (data2read & EOM_IMAGE_DATA_IMAGE);
 	gboolean read_only_dimension = (data2read & EOM_IMAGE_DATA_DIMENSION) &&
 				  ((data2read ^ EOM_IMAGE_DATA_DIMENSION) == 0);
@@ -968,7 +972,13 @@ eom_image_real_load (EomImage *img,
 		}
 #endif
 
-                if (!use_rsvg) {
+#ifdef HAVE_WEBP
+		if (!use_rsvg && !strcmp (mime_type, "image/webp")) {
+			use_webp = TRUE;
+		}
+#endif
+
+                if (!use_rsvg && !use_webp) {
 		        loader = gdk_pixbuf_loader_new_with_mime_type (mime_type, error);
 
 		        if (error && *error) {
@@ -1019,6 +1029,16 @@ eom_image_real_load (EomImage *img,
 				failed = TRUE;
 				break;
                             }
+			} else
+#endif
+#ifdef HAVE_WEBP
+			if (use_webp) {
+				if (!eom_image_has_data (img, EOM_IMAGE_DATA_DIMENSION)) {
+					eom_image_webp_get_dimension_from_buffer (buffer,
+					                                          bytes_read,
+					                                          &priv->width,
+					                                          &priv->height);
+				}
 			} else
 #endif
 			if (!gdk_pixbuf_loader_write (loader, buffer, bytes_read, error)) {
@@ -1090,13 +1110,15 @@ eom_image_real_load (EomImage *img,
 			                   (failed ? NULL : error));
                 } else
 #endif
-		if (failed) {
-			gdk_pixbuf_loader_close (loader, NULL);
-		} else if (!gdk_pixbuf_loader_close (loader, error)) {
-			if (gdk_pixbuf_loader_get_pixbuf (loader) != NULL) {
-				/* Clear error in order to support partial
-				 * images as well. */
-				g_clear_error (error);
+		if (!use_webp) {
+			if (failed) {
+				gdk_pixbuf_loader_close (loader, NULL);
+			} else if (!gdk_pixbuf_loader_close (loader, error)) {
+				if (gdk_pixbuf_loader_get_pixbuf (loader) != NULL) {
+					/* Clear error in order to support partial
+					 * images as well. */
+					g_clear_error (error);
+				}
 			}
 		}
 	}
@@ -1127,7 +1149,23 @@ eom_image_real_load (EomImage *img,
                     priv->image = rsvg_handle_get_pixbuf (priv->svg);
                 } else
 #endif
-
+#ifdef HAVE_WEBP
+		if (use_webp) {
+			priv->anim = eom_image_webp_load_animation (priv->file, error);
+			if (priv->anim == NULL) {
+				failed = TRUE;
+			} else if (gdk_pixbuf_animation_is_static_image (priv->anim)) {
+				priv->image = gdk_pixbuf_animation_get_static_image (priv->anim);
+				g_object_ref (priv->image);
+				g_object_unref (priv->anim);
+				priv->anim = NULL;
+			} else {
+				priv->anim_iter = gdk_pixbuf_animation_get_iter (priv->anim, NULL);
+				priv->image = gdk_pixbuf_animation_iter_get_pixbuf (priv->anim_iter);
+				g_object_ref (priv->image);
+			}
+		} else
+#endif
                 {
 
 		priv->anim = gdk_pixbuf_loader_get_animation (loader);
@@ -1143,7 +1181,7 @@ eom_image_real_load (EomImage *img,
                 }
 
 		if (G_LIKELY (priv->image != NULL)) {
-                        if (!use_rsvg)
+                        if (!use_rsvg && !use_webp)
 			        g_object_ref (priv->image);
 
 			priv->width = gdk_pixbuf_get_width (priv->image);
@@ -1152,6 +1190,9 @@ eom_image_real_load (EomImage *img,
                         if (use_rsvg) {
                                 format = NULL;
                                 priv->file_type = g_strdup ("svg");
+                        } else if (use_webp) {
+                                format = NULL;
+                                priv->file_type = g_strdup ("webp");
                         } else {
 			        format = gdk_pixbuf_loader_get_format (loader);
                         }
@@ -1742,6 +1783,12 @@ eom_image_save_by_info (EomImage *img, EomImageSaveInfo *source, GError **error)
 		success = eom_image_jpeg_save_file (img, tmp_file_path, source, NULL, error);
 	}
 #endif
+#ifdef HAVE_WEBP
+	if (!success && (g_ascii_strcasecmp (source->format, EOM_FILE_FORMAT_WEBP) == 0))
+	{
+		success = eom_image_webp_save_file (img, tmp_file_path, source, NULL, error);
+	}
+#endif
 
 	if (!success && (*error == NULL)) {
 		success = gdk_pixbuf_save (priv->image, tmp_file_path, source->format, error, NULL);
@@ -1849,6 +1896,12 @@ eom_image_save_as_by_info (EomImage *img, EomImageSaveInfo *source, EomImageSave
 		 (g_ascii_strcasecmp (target->format, EOM_FILE_FORMAT_JPEG) == 0))
 	{
 		success = eom_image_jpeg_save_file (img, tmp_file_path, source, target, error);
+	}
+#endif
+#ifdef HAVE_WEBP
+	if (!success && (g_ascii_strcasecmp (target->format, EOM_FILE_FORMAT_WEBP) == 0))
+	{
+		success = eom_image_webp_save_file (img, tmp_file_path, source, target, error);
 	}
 #endif
 
